@@ -9,7 +9,10 @@ users=[
     {"id": 4, "name": "Aparna","email": "aparna@example.com"}, 
 ]
 
-products=[]
+products=[
+    {"id" : 1, "name": "pen", "category": "stationary","price":10},
+    {"id" : 2, "name": "shirt", "category": "cloth","price": 200},
+]
 
 @app.route('/users',methods=['GET'])
 def get_user():
@@ -17,14 +20,19 @@ def get_user():
 
 @app.route('/users',methods=['POST'])
 def add_user():
-    user=request.json
-    users.append(user)
-    return jsonify(user), 201
+    data=request.json
+    if "id" not in data or "name" not in data or "email" not in data:
+        return {"error": "id, name, and email fields are required"}, 400
+    users_exist=[user for user in users if user["id"] == data["id"] or user["email"] == data["email"]]
+    if users_exist:
+        return {"error": "id or email fields already present"}, 400
+
+    users.append(data)
+    return jsonify(data), 201
 
 @app.route('/user/<int:user_id>',methods=['PUT'])
 def update_user(user_id):
     for user in users:
-        print(user)
         if user['id'] == user_id:
             user.update(request.json)
             return jsonify(user)
@@ -37,7 +45,7 @@ def delete_user(user_id):
     return f"User deleted Succesfully"
 
 @app.route('/user/<int:user_id>',methods=['GET'])
-def get_user(user_id):
+def get_user_by_id(user_id):
     for user in users:
         if user[id] == user_id:
             return jsonify(user)
@@ -50,9 +58,14 @@ def get_product():
 
 @app.route('/products',methods=['POST'])
 def add_product():
-    product=request.json
-    products.append(product)
-    return jsonify(product), 201
+    data=request.json
+    if 'id' not in data or 'name' not in data or 'price' not in data:
+        return {"error":"Id ,Name ,Category and Price are required fields"},400
+    product_exist=[product for product in products if product['id'] == data['id']]
+    if product_exist:
+        return {"error":"Id already exist"},400
+    products.append(data)
+    return jsonify(data), 201
 
 @app.route('/product/<int:product_id>',methods=['PUT'])
 def update_product_price(product_id):
@@ -63,15 +76,15 @@ def update_product_price(product_id):
     return "Not Found Error" , 404
 
 @app.route('/product/<int:product_id>',methods=['DELETE'])
-def delete_user(product_id):
+def delete_product(product_id):
     global products
     products=[product for product in products if product['id'] != product_id]
     return f"Product deleted Succesfully"
 
 @app.route('/product/<int:product_id>',methods=['GET'])
-def get_product(product_id):
+def get_product_by_id(product_id):
     for product in products:
-        if product[id] == product_id:
+        if product['id'] == product_id:
             return jsonify(product)
     return "Not Found Product", 404
 
