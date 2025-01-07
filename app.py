@@ -1,9 +1,12 @@
 from flask import Flask,jsonify,request
-from flask_jwt_extended import JWTManager,create_access_token,jwt_required,get_jwt_identity
+from datetime import timedelta
+from flask_jwt_extended import JWTManager,create_access_token,jwt_required,get_jwt_identity,get_jwt,create_refresh_token
 app=Flask(__name__)
 app.config['JWT_SECRET_KEY'] = 'my-strong-secret-key'
-jwt = JWTManager(app)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
 
+jwt = JWTManager(app)
+revoked_tokens=set()
 
 users=[
     {"id": 1, "name": "Jumi","email": "jumi@example.com"},
@@ -23,11 +26,31 @@ def login():
     password=request.json.get('password')
     if username == "admin" and password == "admin":
         token=create_access_token(identity=username)
-    
-        return jsonify({"access_token": token})
+        refresh_token=create_refresh_token(identity=username)
+        return jsonify({"access_token": token,"refresg_token":refresh_token})
     return {"error":"Invalid credentials"},401
 
+@app.route('/refresh',methods=['POSt'])
+@jwt_required
+def refresh():
+    current_user=get_jwt_identity
+    current_jwt=get_jwt()
+    if current_jwt['type'] != 'refresh':
+        return {"errro":"Only refresh token acceptable"} , 401
+    new_token=create_access_token(identity=current_user)
+    return jsonify({"access_token":new_token})
 
+@app.route('/logout',methods=['POST'],endpoint="logout")
+@jwt_required()
+def logout():
+    jti=get_jwt()['jti']
+    revoked_tokens.add(jti)
+    return {"msg": "Logged out successfully"}, 200
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_data):
+    return jwt_data['jti'] in revoked_tokens
+    
 @app.route('/users',methods=['GET'])
 def get_user():
     return jsonify(users)
